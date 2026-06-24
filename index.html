@@ -244,7 +244,12 @@
         <label for="inp-day">日</label>
       </div>
     </div>
-    <p class="input-hint">例）2026年　1月　1日 と入力して「診断する」をタップ</p>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap">
+      <p class="input-hint" style="margin-top:0">例）2026年　1月　1日 と入力して「診断する」をタップ</p>
+      <span id="age-display" style="font-size:1rem;font-weight:700;color:var(--accent);display:none">
+        現在 <span id="age-value"></span> 歳
+      </span>
+    </div>
     <button class="btn-diagnose" id="btn-diagnose">診断する</button>
   </div>
 
@@ -669,6 +674,50 @@ function escHtmlStr(s) {
 }
 
 /* ============================================================
+   年齢算出
+============================================================ */
+function calculateAge(year, month, day) {
+  var today = new Date();
+  var age = today.getFullYear() - year;
+  var m = today.getMonth() + 1;
+  var d = today.getDate();
+  if (m < month || (m === month && d < day)) age--;
+  return age;
+}
+
+/* ============================================================
+   月命星算出（32歳以下に使用）
+   節入り（各月6日頃）を境界とする。簡易版として6日固定。
+   年グループ(本命星1/4/7, 2/5/8, 3/6/9)×月で決まる。
+============================================================ */
+function getTsukimeiStar(year, month, day) {
+  // 本命星のグループを取得
+  var honmei = getHonmeiStar(year, month, day);
+  var group = (honmei.star - 1) % 3; // 0=1/4/7, 1=2/5/8, 2=3/6/9
+
+  // 節入り補正（簡易：6日未満は前月扱い）
+  var m = month;
+  if (day < 6) { m--; if (m <= 0) m = 12; }
+
+  // 各グループの2月(立春後)基準星
+  var baseStars = [8, 5, 2];
+  var base = baseStars[group];
+
+  // 2月からのオフセット
+  var offset = m - 2;
+  if (offset < 0) offset += 12;
+
+  // 星番号を算出（1-9に正規化）
+  var star = ((base - offset - 1) % 9 + 9) % 9 + 1;
+
+  var names = {
+    1:'一白水星',2:'二黒土星',3:'三碧木星',4:'四緑木星',5:'五黄土星',
+    6:'六白金星',7:'七赤金星',8:'八白土星',9:'九紫火星'
+  };
+  return { star: star, name: names[star] };
+}
+
+/* ============================================================
    UI 制御
 ============================================================ */
 var inpYear  = document.getElementById('inp-year');
@@ -684,9 +733,26 @@ function validateInputs() {
   inpDay.classList.toggle('invalid',   !inpDay.value   || d < 1    || d > 31);
 }
 
-inpYear.addEventListener('input', validateInputs);
-inpMonth.addEventListener('input', validateInputs);
-inpDay.addEventListener('input', validateInputs);
+  inpYear.addEventListener('input', function(){ validateInputs(); updateAgeDisplay(); });
+  inpMonth.addEventListener('input', function(){ validateInputs(); updateAgeDisplay(); });
+  inpDay.addEventListener('input', function(){ validateInputs(); updateAgeDisplay(); });
+
+  function updateAgeDisplay() {
+    var y = parseInt(inpYear.value);
+    var m = parseInt(inpMonth.value);
+    var d = parseInt(inpDay.value);
+    var ageEl = document.getElementById('age-display');
+    var ageVal = document.getElementById('age-value');
+    if (y >= 1920 && y <= 2025 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      var age = calculateAge(y, m, d);
+      if (age >= 0 && age <= 120) {
+        ageVal.textContent = age;
+        ageEl.style.display = 'inline';
+        return;
+      }
+    }
+    ageEl.style.display = 'none';
+  }
 
 [inpYear, inpMonth, inpDay].forEach(function(el) {
   el.addEventListener('keydown', function(e) {
@@ -704,19 +770,22 @@ document.getElementById('btn-diagnose').addEventListener('click', function() {
     return;
   }
 
-  var kyusei = getHonmeiStar(year, month, day);
+  var age    = calculateAge(year, month, day);
+  var honmei = getHonmeiStar(year, month, day);
+  var kyusei = (age <= 32) ? getTsukimeiStar(year, month, day) : honmei;
+  var starType = (age <= 32) ? '月命星' : '本命星';
   var maya   = getKin(year, month, day);
   var result = classify(kyusei.star, maya.sunSeal.no);
   var db     = TALK_DB[result.type];
 
-  renderResult(year, month, day, kyusei, maya, result, db);
+  renderResult(year, month, day, age, honmei, kyusei, starType, maya, result, db);
 
   var sec = document.getElementById('result-section');
   sec.classList.add('visible');
   sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-function renderResult(year, month, day, kyusei, maya, result, db) {
+function renderResult(year, month, day, age, honmei, kyusei, starType, maya, result, db) {
   var colorMap = {
     type1:{color:'#3b82f6',bg:'#eff6ff'},
     type2:{color:'#ef4444',bg:'#fef2f2'},
@@ -754,8 +823,16 @@ function renderResult(year, month, day, kyusei, maya, result, db) {
   }
 
   var detailsBody = document.getElementById('details-body');
+  var ageNote = age <= 32
+    ? '<div style="color:#f59e0b;font-weight:600">⚡ 32歳以下のため月命星を使用</div>'
+    : '';
+  var honmeiLine = age <= 32
+    ? '<div>本命星（参考）：'+honmei.name+'　月命星（使用）：<strong>'+kyusei.name+'</strong>（星番号 '+kyusei.star+'）</div>'
+    : '<div>九星'+starType+'：<strong>'+kyusei.name+'</strong>（星番号 '+kyusei.star+'）</div>';
   detailsBody.innerHTML =
-    '<div>九星本命星：<strong>'+kyusei.name+'</strong>（星番号 '+kyusei.star+'）</div>' +
+    ageNote +
+    '<div>年齢：'+age+'歳　判定：'+starType+'を使用</div>' +
+    honmeiLine +
     '<div>マヤKIN：<strong>KIN'+maya.kin+'</strong> ／ '+maya.sunSeal.name+' ／ 銀河の音'+maya.tone+'</div>' +
     '<div>九星タイプ：'+result.detail.kyuseiType+' ／ マヤタイプ：'+result.detail.mayaType+'</div>' +
     '<div>合成スコア：X='+result.detail.finalX+' Y='+result.detail.finalY+'</div>';
