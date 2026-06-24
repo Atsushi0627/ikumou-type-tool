@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>接客タイプ診断 | 育毛メニュー用</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f5f0;
+      --card: #ffffff;
+      --border: #e0ddd6;
+      --text: #1a1a1a;
+      --text-sub: #666;
+      --text-xs: #999;
+      --accent: #2d6a4f;
+      --accent-light: #e8f5ee;
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    html { font-size: 16px; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'YuGothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 640px; margin: 0 auto; padding: 20px 16px 60px; }
+
+    .header { text-align: center; padding: 28px 0 24px; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+    .header .sub { font-size: .75rem; color: var(--text-xs); margin-top: 4px; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: .8rem; font-weight: 700; color: var(--text-xs);
+      letter-spacing: .1em; text-transform: uppercase; margin-bottom: 16px;
+    }
+
+    /* 入力 */
+    .input-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .input-group { display: flex; align-items: center; gap: 4px; }
+    .input-group label { font-size: .85rem; color: var(--text-sub); white-space: nowrap; }
+    .num-input {
+      padding: 12px 8px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 1.1rem;
+      color: var(--text);
+      background: #fafafa;
+      text-align: center;
+      font-family: inherit;
+      transition: border-color .2s;
+      -moz-appearance: textfield;
+    }
+    .num-input::-webkit-outer-spin-button,
+    .num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .num-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+    .num-input.invalid { border-color: #ef4444; background: #fef2f2; }
+    #inp-year  { width: 82px; }
+    #inp-month { width: 56px; }
+    #inp-day   { width: 56px; }
+    .input-hint { font-size: .72rem; color: var(--text-xs); margin-top: 8px; }
+
+    .btn-diagnose {
+      width: 100%; margin-top: 16px; padding: 16px;
+      background: var(--accent); color: #fff; border: none;
+      border-radius: 10px; font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; letter-spacing: .05em;
+      transition: background .2s, transform .1s;
+    }
+    .btn-diagnose:hover { background: #245a42; }
+    .btn-diagnose:active { transform: scale(.98); }
+
+    /* 結果 */
+    #result-section { display: none; }
+    #result-section.visible { display: block; }
+
+    .type-header { border-radius: var(--radius); padding: 20px; margin-bottom: 16px; text-align: center; }
+    .type-name { font-size: 2rem; font-weight: 800; letter-spacing: .02em; line-height: 1.2; }
+    .type-meta { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .confidence-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: .8rem; font-weight: 600; }
+    .conf-high { background: #dcfce7; color: #166534; }
+    .conf-weighted { background: #fef9c3; color: #854d0e; }
+    .intensity-stars { font-size: 1.1rem; letter-spacing: 2px; }
+    .intensity-label { font-size: .72rem; color: var(--text-xs); }
+    .intensity-note { font-size: .75rem; color: var(--text-sub); }
+
+    .details-toggle {
+      cursor: pointer; font-size: .78rem; color: var(--text-xs);
+      text-align: center; padding: 6px; user-select: none;
+    }
+    .details-toggle:hover { color: var(--text-sub); }
+    .details-body {
+      display: none; background: #f9f9f7; border-radius: 8px;
+      padding: 12px 16px; font-size: .8rem; color: var(--text-sub);
+      line-height: 1.8; margin-bottom: 12px;
+    }
+    .details-body.open { display: block; }
+
+    .section { margin-bottom: 18px; }
+    .section-label {
+      font-size: .72rem; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--text-xs);
+      margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+    }
+    .core-text { font-size: 1.05rem; font-weight: 600; line-height: 1.7; color: var(--text); }
+
+    .direction-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .direction-list li { display: flex; align-items: flex-start; gap: 8px; font-size: .95rem; line-height: 1.5; }
+    .direction-list li::before { content: '→'; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    .effective-list li::before { color: var(--accent); }
+    .avoid-list li::before { color: #999; content: '✕'; }
+
+    .examples-box { border: 1.5px dashed var(--border); border-radius: 8px; padding: 12px 14px; background: #fafaf8; }
+    .examples-notice { font-size: .7rem; color: var(--text-xs); margin-bottom: 8px; font-style: italic; }
+    .example-item {
+      font-size: .88rem; color: var(--text-sub);
+      padding: 5px 0; border-bottom: 1px dotted var(--border); line-height: 1.5;
+    }
+    .example-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .example-item::before { content: '「'; color: var(--text-xs); }
+    .example-item::after  { content: '」'; color: var(--text-xs); }
+
+    .closing-text {
+      font-size: .92rem; line-height: 1.7; color: var(--text);
+      background: var(--accent-light); padding: 12px 14px;
+      border-radius: 8px; border-left: 3px solid var(--accent);
+    }
+    .note-text {
+      font-size: .82rem; color: var(--text-sub); background: #fffbeb;
+      border-left: 3px solid #fbbf24; padding: 10px 12px;
+      border-radius: 0 6px 6px 0; line-height: 1.7;
+    }
+
+    /* 区切り */
+    .divider { display: flex; align-items: center; gap: 12px; margin: 28px 0; color: var(--text-xs); font-size: .78rem; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* チェッカー */
+    .checker-desc { font-size: .82rem; color: var(--text-sub); margin-bottom: 14px; line-height: 1.6; }
+    #checker-input {
+      width: 100%; min-height: 120px; padding: 12px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: .95rem; font-family: inherit; color: var(--text);
+      background: #fafafa; resize: vertical; line-height: 1.65;
+      transition: border-color .2s;
+    }
+    #checker-input:focus { outline: none; border-color: var(--accent); }
+    .checker-hint { font-size: .72rem; color: var(--text-xs); margin-top: 6px; }
+
+    #checker-result {
+      margin-top: 14px; padding: 14px; background: #fafaf8;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: .95rem; line-height: 1.8; min-height: 60px;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    #checker-result:empty::before { content: '入力すると自動でチェックされます'; color: var(--text-xs); }
+
+    .legend { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .legend-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; font-size: .8rem; line-height: 1.5; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+    .legend-content { flex: 1; }
+    .legend-title { font-weight: 700; }
+    .legend-desc { color: var(--text-sub); }
+
+    #checker-hits { margin-top: 10px; display: none; }
+    #checker-hits.visible { display: block; }
+    .hits-title { font-size: .75rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
+    .hit-tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .78rem; font-weight: 600; margin: 3px 3px 0 0; }
+
+    /* マトリックス */
+    .matrix-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 20px; }
+    .matrix-axis-label {
+      font-size: .72rem; color: var(--text-xs); text-align: center; font-weight: 600; letter-spacing: .05em;
+    }
+    .matrix-row { display: flex; align-items: center; gap: 6px; width: 100%; }
+    .matrix-axis-label.left, .matrix-axis-label.right {
+      writing-mode: vertical-rl; white-space: nowrap; font-size: .68rem; line-height: 1.4;
+      min-width: 22px; text-align: center;
+    }
+    .matrix-axis-label.right { transform: rotate(180deg); }
+    .matrix-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1;
+    }
+    .matrix-cell {
+      border: 2px solid; border-radius: 8px; padding: 10px 8px; text-align: center;
+    }
+    .mc-type { font-size: .82rem; font-weight: 700; margin-bottom: 4px; }
+    .mc-desc { font-size: .7rem; color: var(--text-sub); line-height: 1.5; }
+
+    /* タイプ一覧 */
+    .type-list { display: flex; flex-direction: column; gap: 10px; }
+    .type-list-item {
+      border-left: 3px solid; padding: 10px 12px; border-radius: 0 8px 8px 0; background: #fafaf8;
+    }
+    .tl-name { font-size: .9rem; font-weight: 700; margin-bottom: 4px; }
+    .tl-key  { font-size: .82rem; color: var(--text); margin-bottom: 4px; line-height: 1.5; }
+    .tl-neighbor { font-size: .75rem; color: var(--text-xs); }
+
+    @media (max-width: 400px) {
+      .type-name { font-size: 1.6rem; }
+      .card { padding: 18px 14px; }
+      .mc-type { font-size: .75rem; }
+      .mc-desc { font-size: .65rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <h1>接客タイプ診断</h1>
+    <p class="sub">育毛メニュー用 ｜ 施術者用カンペ・羅針盤</p>
+  </header>
+
+  <!-- 入力カード -->
+  <div class="card">
+    <div class="card-title">生年月日を入力</div>
+    <div class="input-row">
+      <div class="input-group">
+        <input class="num-input" id="inp-year"  type="number" min="1920" max="2025"
+               placeholder="2026" aria-label="年" inputmode="numeric">
+        <label for="inp-year">年</label>
+      </div>
+      <div class="input-group">
+        <input class="num-input" id="inp-month" type="number" min="1" max="12"
+               placeholder="1" aria-label="月" inputmode="numeric">
+        <label for="inp-month">月</label>
+      </div>
+      <div class="input-group">
+        <input class="num-input" id="inp-day"   type="number" min="1" max="31"
+               placeholder="1" aria-label="日" inputmode="numeric">
+        <label for="inp-day">日</label>
+      </div>
+    </div>
+    <p class="input-hint">例）2026年　1月　1日 と入力して「診断する」をタップ</p>
+    <button class="btn-diagnose" id="btn-diagnose">診断する</button>
+  </div>
+
+  <!-- 診断結果 -->
+  <div id="result-section">
+    <div class="card">
+      <div class="type-header" id="type-header">
+        <div class="type-name" id="type-name"></div>
+        <div class="type-meta">
+          <span class="confidence-badge" id="conf-badge"></span>
+          <span class="intensity-stars" id="intensity-stars"></span>
+          <span class="intensity-label">タイプの濃さ（★多＝特徴が強く出ている／★少＝隣のタイプも混じる可能性）</span>
+          <span class="intensity-note" id="intensity-note"></span>
+        </div>
+      </div>
+
+      <div class="details-toggle" id="details-toggle">▼ 算出根拠を見る（九星・マヤKIN）</div>
+      <div class="details-body" id="details-body"></div>
+
+      <div class="section">
+        <div class="section-label">このタイプの核</div>
+        <div class="core-text" id="core-text"></div>
+      </div>
+      <div class="section">
+        <div class="section-label">効く方向性</div>
+        <ul class="direction-list effective-list" id="effective-list"></ul>
+      </div>
+      <div class="section">
+        <div class="section-label">例文サンプル</div>
+        <div class="examples-box">
+          <div class="examples-notice">※ あくまで一例。ご自身の言葉に置き換えて使うことを推奨します。</div>
+          <div id="examples-list"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-label">避けたい方向性</div>
+        <ul class="direction-list avoid-list" id="avoid-list"></ul>
+      </div>
+      <div class="section">
+        <div class="section-label">クロージングの方向性</div>
+        <div class="closing-text" id="closing-text"></div>
+      </div>
+      <div class="section" id="note-section" style="display:none">
+        <div class="section-label">補足</div>
+        <div class="note-text" id="note-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 区切り -->
+  <div class="divider">薬機法チェッカー</div>
+
+  <!-- 薬機法チェッカー -->
+  <div class="card">
+    <div class="card-title">薬機法チェック</div>
+    <p class="checker-desc">
+      接客メモ・ブログ下書きなど、使いたい表現をここに貼り付けて確認できます。<br>
+      チェッカーは補助ツールです。最終判断は必ずご自身で行ってください。
+    </p>
+    <textarea id="checker-input" placeholder="例：必ず発毛します。育毛効果が高く、抜け毛を改善します。"></textarea>
+    <p class="checker-hint">入力するとリアルタイムでチェックされます</p>
+
+    <div class="legend">
+      <div class="legend-item" style="background:#fef2f2">
+        <div class="legend-dot" style="background:#d32f2f"></div>
+        <div class="legend-content">
+          <div class="legend-title" style="color:#d32f2f">赤：薬機法注意（医薬品的表現）</div>
+          <div class="legend-desc">広告転用は危険。口頭でも避けるのが安全。</div>
+        </div>
+      </div>
+      <div class="legend-item" style="background:#fff7ed">
+        <div class="legend-dot" style="background:#f57c00"></div>
+        <div class="legend-content">
+          <div class="legend-title" style="color:#f57c00">橙：グレーゾーン（医薬部外品のみ可）</div>
+          <div class="legend-desc">薬用育毛剤なら可。化粧品なら「健やかに保つ」等へ言い換えを。</div>
+        </div>
+      </div>
+      <div class="legend-item" style="background:#fefce8">
+        <div class="legend-dot" style="background:#fbc02d"></div>
+        <div class="legend-content">
+          <div class="legend-title" style="color:#b45309">黄：断定・最大級（景表法リスク）</div>
+          <div class="legend-desc">断定や最大級は景表法に注意。「期待が高まる」等へ言い換えを。</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="checker-result"></div>
+    <div id="checker-hits">
+      <div class="hits-title">検出されたワード</div>
+      <div id="hits-tags"></div>
+    </div>
+  </div>
+
+  <!-- 区切り -->
+  <div class="divider">4タイプ早見マトリックス</div>
+
+  <!-- マトリックス -->
+  <div class="card">
+    <div class="card-title">4タイプの位置関係</div>
+    <p style="font-size:.8rem;color:var(--text-sub);margin-bottom:16px;line-height:1.6">
+      縦軸は「決断スピード」、横軸は「判断の動き方」。<br>
+      ★が少ない（境界寄り）ときは、隣のマスのタイプの要素も混じっている可能性があります。
+    </p>
+
+    <!-- マトリックス図 -->
+    <div class="matrix-wrap">
+      <div class="matrix-axis-label top">じっくり（慎重）</div>
+      <div class="matrix-row">
+        <div class="matrix-axis-label left">理論・<br>論理</div>
+        <div class="matrix-grid">
+          <div class="matrix-cell" style="background:#eff6ff;border-color:#3b82f6">
+            <div class="mc-type" style="color:#3b82f6">じっくり納得型</div>
+            <div class="mc-desc">根拠→理解→決断<br>急かすと引く</div>
+          </div>
+          <div class="matrix-cell" style="background:#ecfdf5;border-color:#10b981">
+            <div class="mc-type" style="color:#10b981">共感重視型</div>
+            <div class="mc-desc">安心→信頼→決断<br>不安を先に取る</div>
+          </div>
+          <div class="matrix-cell" style="background:#fffbeb;border-color:#f59e0b">
+            <div class="mc-type" style="color:#f59e0b">勢い行動型</div>
+            <div class="mc-desc">ノリ→楽しさ→即決<br>テンポが命</div>
+          </div>
+          <div class="matrix-cell" style="background:#fef2f2;border-color:#ef4444">
+            <div class="mc-type" style="color:#ef4444">情熱直感型</div>
+            <div class="mc-desc">直感→ピン→即決<br>熱が冷める前に</div>
+          </div>
+        </div>
+        <div class="matrix-axis-label right">感情・<br>直感</div>
+      </div>
+      <div class="matrix-axis-label bottom">即決（行動的）</div>
+    </div>
+
+    <!-- 各タイプ一覧 -->
+    <div class="type-list">
+      <div class="type-list-item" style="border-left-color:#3b82f6">
+        <div class="tl-name" style="color:#3b82f6">じっくり納得型</div>
+        <div class="tl-key">根拠で動く。理解できたら決断。急かすと離れる。</div>
+        <div class="tl-neighbor">境界寄りのとき→ <span style="color:#10b981">共感重視型</span> や <span style="color:#ef4444">情熱直感型</span> の要素も</div>
+      </div>
+      <div class="type-list-item" style="border-left-color:#10b981">
+        <div class="tl-name" style="color:#10b981">共感重視型</div>
+        <div class="tl-key">安心が先。不安を全部聞いてから。信頼が決め手。</div>
+        <div class="tl-neighbor">境界寄りのとき→ <span style="color:#3b82f6">じっくり納得型</span> や <span style="color:#f59e0b">勢い行動型</span> の要素も</div>
+      </div>
+      <div class="type-list-item" style="border-left-color:#f59e0b">
+        <div class="tl-name" style="color:#f59e0b">勢い行動型</div>
+        <div class="tl-key">楽しそうが決め手。テンポよく、シンプルに。</div>
+        <div class="tl-neighbor">境界寄りのとき→ <span style="color:#10b981">共感重視型</span> や <span style="color:#ef4444">情熱直感型</span> の要素も</div>
+      </div>
+      <div class="type-list-item" style="border-left-color:#ef4444">
+        <div class="tl-name" style="color:#ef4444">情熱直感型</div>
+        <div class="tl-key">ピンと来たら即決。熱が冷めないうちに背中を押す。</div>
+        <div class="tl-neighbor">境界寄りのとき→ <span style="color:#3b82f6">じっくり納得型</span> や <span style="color:#f59e0b">勢い行動型</span> の要素も</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   kyusei.js インライン
+============================================================ */
+function getHonmeiStar(year, month, day) {
+  var y = year;
+  if (month === 1 || (month === 2 && day <= 3)) y -= 1;
+  var s = String(y).split('').reduce(function(a,b){ return a + Number(b); }, 0);
+  while (s >= 10) s = String(s).split('').reduce(function(a,b){ return a + Number(b); }, 0);
+  var star = 11 - s;
+  if (star >= 10) star -= 9;
+  if (star === 0) star = 9;
+  var names = {1:'一白水星',2:'二黒土星',3:'三碧木星',4:'四緑木星',5:'五黄土星',
+               6:'六白金星',7:'七赤金星',8:'八白土星',9:'九紫火星'};
+  return { star: star, name: names[star] };
+}
+
+var KYUSEI_AXIS = {
+  1:{x:-1,y:-2}, 2:{x:+1,y:-2}, 3:{x:+1,y:+2}, 4:{x:+1,y:-1}, 5:{x:-1,y:+2},
+  6:{x:-2,y: 0}, 7:{x:+2,y:+1}, 8:{x:-1,y:-1}, 9:{x:+2,y:+2}
+};
+
+/* ============================================================
+   maya.js インライン
+============================================================ */
+var MAYA_TABLE = {
+  1910:[62,93,121,152,182,213,243,14,45,75,106,136],
+  1911:[167,198,226,257,27,58,88,119,150,180,211,241],
+  1912:[12,43,71,102,132,163,193,224,255,25,56,86],
+  1913:[117,148,176,207,237,8,38,69,100,130,161,191],
+  1914:[222,253,21,52,82,113,143,174,205,235,6,36],
+  1915:[67,98,126,157,187,218,248,19,50,80,111,141],
+  1916:[172,203,231,2,32,63,93,124,155,185,216,246],
+  1917:[17,48,76,107,137,168,198,229,0,30,61,91],
+  1918:[122,153,181,212,242,13,43,74,105,135,166,196],
+  1919:[227,258,26,57,87,118,148,179,210,240,11,41],
+  1920:[72,103,131,162,192,223,253,24,55,85,116,146],
+  1921:[177,208,236,7,37,68,98,129,160,190,221,251],
+  1922:[22,53,81,112,142,173,203,234,5,35,66,96],
+  1923:[127,158,186,217,247,18,48,79,110,140,171,201],
+  1924:[232,3,31,62,92,123,153,184,215,245,16,46],
+  1925:[77,108,136,167,197,228,258,29,60,90,121,151],
+  1926:[182,213,241,12,42,73,103,134,165,195,226,256],
+  1927:[27,58,86,117,147,178,208,239,10,40,71,101],
+  1928:[132,163,191,222,252,23,53,84,115,145,176,206],
+  1929:[237,8,36,67,97,128,158,189,220,250,21,51],
+  1930:[82,113,141,172,202,233,3,34,65,95,126,156],
+  1931:[187,218,246,17,47,78,108,139,170,200,231,1],
+  1932:[32,63,91,122,152,183,213,244,15,45,76,106],
+  1933:[137,168,196,227,257,28,58,89,120,150,181,211],
+  1934:[242,13,41,72,102,133,163,194,225,255,26,56],
+  1935:[87,118,146,177,207,238,8,39,70,100,131,161],
+  1936:[192,223,251,22,52,83,113,144,175,205,236,6],
+  1937:[37,68,96,127,157,188,218,249,20,50,81,111],
+  1938:[142,173,201,232,2,33,63,94,125,155,186,216],
+  1939:[247,18,46,77,107,138,168,199,230,0,31,61],
+  1940:[92,123,151,182,212,243,13,44,75,105,136,166],
+  1941:[197,228,256,27,57,88,118,149,180,210,241,11],
+  1942:[42,73,101,132,162,193,223,254,25,55,86,116],
+  1943:[147,178,206,237,7,38,68,99,130,160,191,221],
+  1944:[252,23,51,82,112,143,173,204,235,5,36,66],
+  1945:[97,128,156,187,217,248,18,49,80,110,141,171],
+  1946:[202,233,1,32,62,93,123,154,185,215,246,16],
+  1947:[47,78,106,137,167,198,228,259,30,60,91,121],
+  1948:[152,183,211,242,12,43,73,104,135,165,196,226],
+  1949:[257,28,56,87,117,148,178,209,240,10,41,71],
+  1950:[102,133,161,192,222,253,23,54,85,115,146,176],
+  1951:[207,238,6,37,67,98,128,159,190,220,251,21],
+  1952:[52,83,111,142,172,203,233,4,35,65,96,126],
+  1953:[157,188,216,247,17,48,78,109,140,170,201,231],
+  1954:[2,33,61,92,122,153,183,214,245,15,46,76],
+  1955:[107,138,166,197,227,258,28,59,90,120,151,181],
+  1956:[212,243,11,42,72,103,133,164,195,225,256,26],
+  1957:[57,88,116,147,177,208,238,9,40,70,101,131],
+  1958:[162,193,221,252,22,53,83,114,145,175,206,236],
+  1959:[7,38,66,97,127,158,188,219,250,20,51,81],
+  1960:[112,143,171,202,232,3,33,64,95,125,156,186],
+  1961:[217,248,16,47,77,108,138,169,200,230,1,31]
+};
+
+function isLeap(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+function tableYearKey(year) {
+  var y = year;
+  while (y > 1961) y -= 52;
+  while (y < 1910) y += 52;
+  return y;
+}
+
+function getKin(year, month, day) {
+  var key = tableYearKey(year);
+  var base = MAYA_TABLE[key][month - 1];
+  var kin = base + day;
+  if (isLeap(year) && month === 3) kin += 1;
+  kin = ((kin - 1) % 260) + 1;
+  if (kin <= 0) kin += 260;
+  var sealNo = kin % 20; if (sealNo === 0) sealNo = 20;
+  var tone   = kin % 13; if (tone   === 0) tone   = 13;
+  var seals = {1:'赤い龍',2:'白い風',3:'青い夜',4:'黄色い種',5:'赤い蛇',
+    6:'白い世界の橋渡し',7:'青い手',8:'黄色い星',9:'赤い月',10:'白い犬',
+    11:'青い猿',12:'黄色い人',13:'赤い空歩く人',14:'白い魔法使い',15:'青い鷲',
+    16:'黄色い戦士',17:'赤い地球',18:'白い鏡',19:'青い嵐',20:'黄色い太陽'};
+  return { kin: kin, sunSeal: { no: sealNo, name: seals[sealNo] }, tone: tone };
+}
+
+var MAYA_AXIS = {
+  1:{x:+2,y:+1},2:{x:+1,y:-1},3:{x:-2,y:-1},4:{x:-1,y:-1},5:{x:+2,y:+1},
+  6:{x:+1,y:-1},7:{x:+1,y:-1},8:{x:+2,y:-1},9:{x:+1,y:+1},10:{x:+1,y:-1},
+  11:{x:-1,y:+1},12:{x:-1,y:-1},13:{x:+2,y:-1},14:{x:-1,y:-2},15:{x:-2,y:-1},
+  16:{x:-1,y:+1},17:{x:+1,y:+1},18:{x:-2,y:-1},19:{x:+1,y:+2},20:{x:+2,y:+1}
+};
+
+/* ============================================================
+   classify.js インライン
+============================================================ */
+function toType(x, y) {
+  if (x <= 0 && y <= 0) return 'type1';
+  if (x >  0 && y <= 0) return 'type3';
+  if (x >  0 && y >  0) return 'type4';
+  return 'type2';
+}
+
+function classify(starNo, sealNo) {
+  var k = KYUSEI_AXIS[starNo];
+  var m = MAYA_AXIS[sealNo];
+  var kyuseiType = toType(k.x, k.y);
+  var mayaType   = toType(m.x, m.y);
+  var finalX, finalY, type, confidence;
+  if (kyuseiType === mayaType) {
+    type = kyuseiType; confidence = 'high';
+    finalX = (k.x + m.x) / 2; finalY = (k.y + m.y) / 2;
+  } else {
+    finalX = (k.x * 1.5 + m.x * 1.0) / 2.5;
+    finalY = (k.y * 1.5 + m.y * 1.0) / 2.5;
+    type = toType(finalX, finalY); confidence = 'kyusei-weighted';
+  }
+  var dist = Math.abs(finalX) + Math.abs(finalY);
+  var intensity = Math.min(5, Math.round(dist / 4 * 5));
+  var labels = {type1:'じっくり納得型',type2:'情熱直感型',type3:'共感重視型',type4:'勢い行動型'};
+  return {
+    type: type, label: labels[type], confidence: confidence, intensity: intensity,
+    detail: { kyuseiType: kyuseiType, mayaType: mayaType,
+              finalX: Math.round(finalX*10)/10, finalY: Math.round(finalY*10)/10 }
+  };
+}
+
+/* ============================================================
+   talkDB.js インライン
+============================================================ */
+var TALK_DB = {
+  type1: {
+    label:'じっくり納得型', color:'#3b82f6',
+    core:'根拠で動く。急かされると引く。「理解できた」が決断の前提。',
+    effective:['結論より先に理由を置く','選択肢を複数見せて選ばせる','即決を迫らず持ち帰りを許す'],
+    examples:['まず今の状態からご説明しますね','なぜこのケアが必要か、理由からお話しします'],
+    avoid:['「今日だけ」で焦らせる','根拠なしに「とりあえず」','「みんなやってる」の同調圧力'],
+    closing:'引いて待つ。「ご自宅で考えて、次回続きを」。即決を迫らないこと自体が決め手。',
+    note:''
+  },
+  type2: {
+    label:'情熱直感型', color:'#ef4444',
+    core:'直感とテンションで決める。「ピンと来た」が合図。長い説明は熱を冷ます。',
+    effective:['変わった後の姿を描かせる','その場の高揚を大事にする','理屈は最小限、要点だけ'],
+    examples:['なりたい髪、イメージあります？','やるなら今日からが一番早いです'],
+    avoid:['データを延々並べる','「持ち帰って検討を」で冷ます','選択肢を多く出して迷わせる'],
+    closing:'熱があるうちに背中を押す。「その感覚、大事にしましょう」。迷い始める前にひと押し。',
+    note:'五黄土星の人はこのタイプでも「自分で決めたい」気質。「決めるのはご自身で」と主導権を渡す一言を添えると刺さる。'
+  },
+  type3: {
+    label:'共感重視型', color:'#10b981',
+    core:'安心して初めて動く。不安が消えないと決められない。「この人なら」の信頼が前提。',
+    effective:['まず不安をすべて聞く','体験談・他の方の話で安心を作る','寄り添う姿勢を一貫させる'],
+    examples:['不安なところ、全部聞かせてください','同じお悩みの方も多いですよ'],
+    avoid:['いきなり提案・クロージング','理屈で押す','焦らせる・即決を迫る'],
+    closing:'決断を急がせない。「ご家族と相談されてもいいですよ」。安心が固まれば自然と決まる。',
+    note:''
+  },
+  type4: {
+    label:'勢い行動型', color:'#f59e0b',
+    core:'ノリと勢いで動く。楽しそう・面白そうが決め手。テンポが悪いと冷める。',
+    effective:['選択肢を絞ってシンプルに','テンポよく、軽快に','「まず試そう」のハードルを下げる'],
+    examples:['まずは試してみましょうか','難しく考えなくて大丈夫ですよ'],
+    avoid:['細かい理屈を長々','選択肢を多く出す','重い空気・深刻なトーン'],
+    closing:'テンポを止めずに決める。「じゃあ、やってみましょう！」。勢いがあるうちに軽く確定。',
+    note:''
+  }
+};
+
+/* ============================================================
+   ngDictionary.js インライン
+============================================================ */
+var NG_DICTIONARY = {
+  level3:{
+    label:'薬機法注意（赤＝医薬品的表現）', color:'#d32f2f',
+    desc:'広告転用は危険。口頭でも避けるのが安全。',
+    words:['治る','治療','完治','発毛','生やす','生える','血行促進',
+           '毛母細胞','活性化','再生','修復','改善','予防効果','効く']
+  },
+  level2:{
+    label:'グレーゾーン（橙＝医薬部外品のみ可）', color:'#f57c00',
+    desc:'製品が医薬部外品（薬用育毛剤）なら使用可。化粧品なら「健やかに保つ」へ。',
+    words:['育毛','発毛促進','抜け毛','薄毛','脱毛予防','養毛']
+  },
+  level1:{
+    label:'断定・最大級注意（黄＝保証・誇大表現）', color:'#fbc02d',
+    desc:'断定や最大級は景表法リスク。「期待が高まる」等へ。',
+    words:['必ず','絶対','100%','確実','最高','抜群','日本一','No.1','オンリーワン']
+  }
+};
+
+/* ============================================================
+   checker.js インライン
+============================================================ */
+function scanText(text) {
+  if (!text) return { html: '', hits: [] };
+  var levels = ['level3','level2','level1'];
+  var wordMap = {};
+  levels.forEach(function(lv) {
+    var entry = NG_DICTIONARY[lv];
+    entry.words.forEach(function(word) {
+      if (text.indexOf(word) !== -1 && !wordMap[word]) {
+        wordMap[word] = { word:word, level:lv, label:entry.label, color:entry.color, desc:entry.desc };
+      }
+    });
+  });
+  var levelOrder = {level3:0, level2:1, level1:2};
+  var detected = Object.values(wordMap).sort(function(a,b){ return levelOrder[a.level]-levelOrder[b.level]; });
+
+  // マーク範囲を収集
+  var ranges = [];
+  detected.forEach(function(entry) {
+    var word = entry.word;
+    var idx = 0;
+    while (true) {
+      var pos = text.indexOf(word, idx);
+      if (pos === -1) break;
+      var end = pos + word.length;
+      var overlaps = ranges.some(function(r){ return pos < r.end && end > r.start; });
+      if (!overlaps) ranges.push({ start:pos, end:end, entry:entry });
+      idx = pos + 1;
+    }
+  });
+  ranges.sort(function(a,b){ return a.start - b.start; });
+
+  var html = '';
+  var cursor = 0;
+  ranges.forEach(function(r) {
+    html += escHtmlStr(text.slice(cursor, r.start));
+    var color = r.entry.color;
+    var word = escHtmlStr(text.slice(r.start, r.end));
+    html += '<mark style="background:'+color+'22;border-bottom:2px solid '+color+';color:'+color+';font-weight:600;border-radius:2px" title="'+escHtmlStr(r.entry.label)+'｜'+escHtmlStr(r.entry.desc)+'">'+word+'</mark>';
+    cursor = r.end;
+  });
+  html += escHtmlStr(text.slice(cursor));
+
+  return { html: html, hits: detected };
+}
+
+function escHtmlStr(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ============================================================
+   UI 制御
+============================================================ */
+var inpYear  = document.getElementById('inp-year');
+var inpMonth = document.getElementById('inp-month');
+var inpDay   = document.getElementById('inp-day');
+
+function validateInputs() {
+  var y = parseInt(inpYear.value);
+  var m = parseInt(inpMonth.value);
+  var d = parseInt(inpDay.value);
+  inpYear.classList.toggle('invalid',  !inpYear.value  || y < 1920 || y > 2025);
+  inpMonth.classList.toggle('invalid', !inpMonth.value || m < 1    || m > 12);
+  inpDay.classList.toggle('invalid',   !inpDay.value   || d < 1    || d > 31);
+}
+
+inpYear.addEventListener('input', validateInputs);
+inpMonth.addEventListener('input', validateInputs);
+inpDay.addEventListener('input', validateInputs);
+
+[inpYear, inpMonth, inpDay].forEach(function(el) {
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('btn-diagnose').click();
+  });
+});
+
+document.getElementById('btn-diagnose').addEventListener('click', function() {
+  var year  = parseInt(inpYear.value);
+  var month = parseInt(inpMonth.value);
+  var day   = parseInt(inpDay.value);
+
+  if (!year || !month || !day || year < 1920 || year > 2025 || month < 1 || month > 12 || day < 1 || day > 31) {
+    validateInputs();
+    return;
+  }
+
+  var kyusei = getHonmeiStar(year, month, day);
+  var maya   = getKin(year, month, day);
+  var result = classify(kyusei.star, maya.sunSeal.no);
+  var db     = TALK_DB[result.type];
+
+  renderResult(year, month, day, kyusei, maya, result, db);
+
+  var sec = document.getElementById('result-section');
+  sec.classList.add('visible');
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+function renderResult(year, month, day, kyusei, maya, result, db) {
+  var colorMap = {
+    type1:{color:'#3b82f6',bg:'#eff6ff'},
+    type2:{color:'#ef4444',bg:'#fef2f2'},
+    type3:{color:'#10b981',bg:'#ecfdf5'},
+    type4:{color:'#f59e0b',bg:'#fffbeb'}
+  };
+  var c = colorMap[result.type];
+
+  var typeHeader = document.getElementById('type-header');
+  typeHeader.style.background = c.bg;
+  var typeName = document.getElementById('type-name');
+  typeName.textContent = db.label;
+  typeName.style.color = c.color;
+
+  var confBadge = document.getElementById('conf-badge');
+  if (result.confidence === 'high') {
+    confBadge.textContent = '★★★ 信頼度：高（両暦一致）';
+    confBadge.className = 'confidence-badge conf-high';
+  } else {
+    confBadge.textContent = '九星寄り判定（両暦が割れたため、幅を持って対応）';
+    confBadge.className = 'confidence-badge conf-weighted';
+  }
+
+  var stars = '★'.repeat(result.intensity) + '☆'.repeat(5 - result.intensity);
+  var intensityStars = document.getElementById('intensity-stars');
+  intensityStars.textContent = stars;
+  intensityStars.style.color = c.color;
+
+  var intensityNote = document.getElementById('intensity-note');
+  if (result.intensity <= 2) {
+    intensityNote.textContent = '境界に近いため、隣のタイプの要素も混じる可能性があります';
+    intensityNote.style.display = 'block';
+  } else {
+    intensityNote.style.display = 'none';
+  }
+
+  var detailsBody = document.getElementById('details-body');
+  detailsBody.innerHTML =
+    '<div>九星本命星：<strong>'+kyusei.name+'</strong>（星番号 '+kyusei.star+'）</div>' +
+    '<div>マヤKIN：<strong>KIN'+maya.kin+'</strong> ／ '+maya.sunSeal.name+' ／ 銀河の音'+maya.tone+'</div>' +
+    '<div>九星タイプ：'+result.detail.kyuseiType+' ／ マヤタイプ：'+result.detail.mayaType+'</div>' +
+    '<div>合成スコア：X='+result.detail.finalX+' Y='+result.detail.finalY+'</div>';
+
+  var toggle = document.getElementById('details-toggle');
+  toggle.onclick = function() {
+    detailsBody.classList.toggle('open');
+    toggle.textContent = detailsBody.classList.contains('open')
+      ? '▲ 算出根拠を閉じる'
+      : '▼ 算出根拠を見る（九星・マヤKIN）';
+  };
+
+  document.getElementById('core-text').textContent = db.core;
+
+  document.getElementById('effective-list').innerHTML = db.effective.map(function(e) {
+    return '<li>'+escHtmlStr(e)+'</li>';
+  }).join('');
+
+  document.getElementById('examples-list').innerHTML = db.examples.map(function(e) {
+    return '<div class="example-item">'+escHtmlStr(e)+'</div>';
+  }).join('');
+
+  document.getElementById('avoid-list').innerHTML = db.avoid.map(function(a) {
+    return '<li>'+escHtmlStr(a)+'</li>';
+  }).join('');
+
+  document.getElementById('closing-text').textContent = db.closing;
+
+  var noteSection = document.getElementById('note-section');
+  if (db.note) {
+    document.getElementById('note-text').textContent = db.note;
+    noteSection.style.display = 'block';
+  } else {
+    noteSection.style.display = 'none';
+  }
+}
+
+/* ============================================================
+   薬機法チェッカー
+============================================================ */
+var checkerInput  = document.getElementById('checker-input');
+var checkerResult = document.getElementById('checker-result');
+var checkerHits   = document.getElementById('checker-hits');
+var hitsTags      = document.getElementById('hits-tags');
+var checkerTimer  = null;
+
+checkerInput.addEventListener('input', function() {
+  clearTimeout(checkerTimer);
+  checkerTimer = setTimeout(function() {
+    var text = checkerInput.value;
+    if (!text.trim()) {
+      checkerResult.innerHTML = '';
+      checkerHits.classList.remove('visible');
+      return;
+    }
+    var r = scanText(text);
+    checkerResult.innerHTML = r.html;
+
+    if (r.hits.length > 0) {
+      hitsTags.innerHTML = r.hits.map(function(h) {
+        return '<span class="hit-tag" style="background:'+h.color+'22;color:'+h.color+';border:1px solid '+h.color+'44" title="'+escHtmlStr(h.label)+'｜'+escHtmlStr(h.desc)+'">'+escHtmlStr(h.word)+'</span>';
+      }).join('');
+      checkerHits.classList.add('visible');
+    } else {
+      checkerHits.classList.remove('visible');
+    }
+  }, 120);
+});
+</script>
+</body>
+</html>
